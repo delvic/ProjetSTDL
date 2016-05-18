@@ -27,8 +27,8 @@ inh tds : TDS for ENTITES,ENTITE,TYPE,STYPE,CHAMP,CHAMPS,INST,INSTS,BLOC,FONCTIO
                     F,T,R,A,E,AFFX,FX,TX,RX,AX,ES,ESX,PARF,PARFS,PARFSX;
 syn type : DTYPE for TYPE,STYPE,PTRS,CHAMP,DECL,FONCTION,PARF,F,FX,E,A,AX,AFFX,OPREL,OPADD,
                       OPMUL,OPUN,R,T,RX,TX;
-inh hemp : Emplacement for ENTITES,ENTITE,BLOC,INST,INSTS,SIX;
-syn emp : Emplacement for ENTITE,ENTITES,INST,INSTS,BLOC;
+inh hemp : Emplacement for ENTITES,ENTITE,BLOC,INST,INSTS,SIX,FX;
+syn emp : Emplacement for ENTITE,ENTITES,INST,INSTS,BLOC,F,FX,T,R,A;
 inh htype : DTYPE for PTRS,DECL,FONCTION,FX,AFFX,OPREL,OPADD,OPMUL,AX,TX,RX,INST,INSTS,BLOC,SIX;
 inh lchamps : LCHAMPS for CHAMPS,PARFS,PARFSX;
 syn champ : CHAMP for CHAMP,PARF;
@@ -175,7 +175,6 @@ do
   DECL^htype := TYPE^type;
 end
 }
---Emplacement TODO
 #tds{
 local
   i : INFO;
@@ -225,7 +224,7 @@ local
   reg : Register;
 do
   reg := new Register("LB",0);
-  BLOC^hemp := new Emplacement(0,reg);
+  BLOC^hemp := new Emplacement(3,reg);
 end
 }
 #lchamps{
@@ -499,25 +498,15 @@ do
 end
 }
 -- bloc d'instructions 
-INST ->  #tds #hemp BLOC #emp #gen;
+INST ->  #tds BLOC #emp #gen;
 #gen{
 do
-  INST^code := BLOC^code + INST^machine.genFree(BLOC^emp.getDep());
+  INST^code := BLOC^code + INST^machine.genFree(BLOC^emp.getDep()-INST^hemp.getDep());
 end
 }
 #tds{
 do
   BLOC^tds := new TDS(INST^tds);
-end
-}
-#hemp{
-local
-  reg : Register;
-  regi : Register;
-do
-  regi := INST^hemp.getReg(); 
-  reg := new Register("LB",regi.getNum()+1);
-  BLOC^hemp := new Emplacement(0,reg);
 end
 }
 #emp{
@@ -526,10 +515,10 @@ do
 end
 }
 -- conditionnelle
-INST ->   si paro E parf #tds #hemp BLOC SIX #emp #gen ;
+INST ->   si paro E parf #tds BLOC SIX #emp #gen ;
 #gen{
 do
-  INST^code := INST^machine.genIf(E^code,BLOC^code,SIX^code);
+  INST^code := INST^machine.genIf(E^code,BLOC^code,SIX^code) + INST^machine.genFree(BLOC^emp.getDep()-INST^hemp.getDep());
 end
 }
 #emp{
@@ -537,35 +526,15 @@ do
   INST^emp := INST^hemp;
 end
 }
-#hemp{
-local
-  reg : Register;
-  regi : Register;
-do
-  regi := INST^hemp.getReg(); 
-  reg := new Register("LB",regi.getNum()+1);
-  BLOC^hemp := new Emplacement(0,reg);
-end
-}
 #tds{
 do
   BLOC^tds := new TDS(INST^tds);
 end
 }
-SIX -> sinon #hemp #tds BLOC #gen ;
+SIX -> sinon #tds BLOC #gen ;
 #gen{
 do
-  SIX^code := BLOC^code;
-end
-}
-#hemp{
-local
-  reg : Register;
-  regi : Register;
-do
-  regi := SIX^hemp.getReg(); 
-  reg := new Register("LB",regi.getNum()+1);
-  BLOC^hemp := new Emplacement(0,reg);
+  SIX^code := BLOC^code  + SIX^machine.genFree(BLOC^emp.getDep()-SIX^hemp.getDep());
 end
 }
 #tds{
@@ -657,6 +626,7 @@ A -> R #htype AX #type #gen;
 #gen{
 do
   A^code := R^code + AX^code;
+  A^emp := R^emp;
 end
 }
 #type{
@@ -827,6 +797,7 @@ end
 #gen{
 do
   R^code := T^code + RX^code;
+  R^emp := T^emp;
 end
 }
 
@@ -936,6 +907,7 @@ end
 #gen {
 do
   T^code := F^code + TX^code;
+  T^emp := F^emp;
 end
 }
 TX -> OPMUL F #htype TX #type #gen;
@@ -1053,6 +1025,7 @@ end
 #gen{
 do
     F^code := F^machine.genCst(entier^txt);
+    F^emp := new Emplacement();
 end
 }
 -- Constante chaine
@@ -1072,6 +1045,7 @@ end
 #gen{
 do
   F^code := F^machine.genCst(caractere^txt);
+  F^emp := new Emplacement();
 end
 }
 -- expression unaire
@@ -1100,6 +1074,7 @@ end
 #gen{
 do
   F^code := F1^code + OPUN^code;
+  F^emp := F1^emp;
 end
 }
 
@@ -1187,8 +1162,11 @@ end
 
 F -> mult F #type #gen;
 #gen{
+local
+  t : DTYPE;
 do
-  F^code := "";
+  t := F1^type.getTypePointe();
+  F^code := F1^code + "LOADI (" + t.getTaille() + ");\n";
 end
 }
 #type{
@@ -1205,7 +1183,8 @@ end
 F -> ident #htype FX #type #gen;
 #gen{
 do
-  F^code := "";
+  F^code := FX^code;
+  F^emp := FX^emp;
 end
 }
 #type{
@@ -1227,6 +1206,8 @@ do
       INFOVAR then
         iv := i;
         FX^htype := iv.getType();
+        
+        FX^hemp := iv.getEmpl();
       else
         error(not_var_name,ident^txt);
       end
@@ -1239,6 +1220,7 @@ FX -> #type;
 do
   FX^type := FX^htype;
   FX^code := "";
+  FX^emp := FX^hemp;
 end
 }
 
@@ -1248,6 +1230,7 @@ FX ->   pt  ident #htype FX #type;
 do
   FX^type := FX1^type;
   FX^code := "";
+  FX^emp := FX1^emp;
 end
 }
 #htype{
@@ -1255,6 +1238,9 @@ local
   lchamps : LCHAMPS;
   champ : CHAMP;
   struct : STRUCT;
+  t : DTYPE;
+  e1 : Emplacement;
+  e2 : Emplacement;
 do
   match FX^htype with
     STRUCT then
@@ -1265,6 +1251,10 @@ do
           error(champ_inexistant,ident^txt);
         else
           FX1^htype := champ.getType();
+          
+          e1 := FX^hemp;
+          t := champ.getType();
+          FX1^hemp := e1.offset(t.getTaille());
         end
   else
     error(pas_struct);

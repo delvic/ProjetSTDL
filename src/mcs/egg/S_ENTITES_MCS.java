@@ -81,25 +81,25 @@ this.att_emp=x_4.att_emp;
       case LEX_MCS.EOF :
         regle1 () ;
       break ;
-      case LEX_MCS.token_typedef : // 455
+      case LEX_MCS.token_typedef : // 4497
         regle2 () ;
       break ;
-      case LEX_MCS.token_void : // 450
+      case LEX_MCS.token_void : // 4492
         regle2 () ;
       break ;
-      case LEX_MCS.token_int : // 452
+      case LEX_MCS.token_int : // 4494
         regle2 () ;
       break ;
-      case LEX_MCS.token_char : // 453
+      case LEX_MCS.token_char : // 4495
         regle2 () ;
       break ;
-      case LEX_MCS.token_identc : // 477
+      case LEX_MCS.token_identc : // 4519
         regle2 () ;
       break ;
-      case LEX_MCS.token_struct : // 454
+      case LEX_MCS.token_struct : // 4496
         regle2 () ;
       break ;
-      case LEX_MCS.token_asm : // 451
+      case LEX_MCS.token_asm : // 4493
         regle2 () ;
       break ;
       default :

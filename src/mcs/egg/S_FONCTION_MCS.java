@@ -50,7 +50,7 @@ try {
 Register loc_reg;
 // instructions
 loc_reg= new Register("LB", 0);
-x_9.att_hemp= new Emplacement(0, loc_reg);
+x_9.att_hemp= new Emplacement(3, loc_reg);
 }catch(RuntimeException e) {       att_scanner._interrompre(IProblem.Internal,att_scanner.getBeginLine(),ICoreMessages.id_EGG_runtime_error, CoreMessages.EGG_runtime_error,new Object[] { "MCS", "#hemp","FONCTION -> paro #dep #lchamps PARFS parf #type #hemp BLOC ;"});
 }
   }

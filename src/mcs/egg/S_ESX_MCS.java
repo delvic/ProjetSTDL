@@ -63,10 +63,10 @@ this.att_ltypes.inserer(x_3.att_type);
   public void analyser () throws Exception {
     scanner.lit ( 1 ) ;
     switch ( scanner.fenetre[0].code ) {
-      case LEX_MCS.token_parf : // 441
+      case LEX_MCS.token_parf : // 4483
         regle76 () ;
       break ;
-      case LEX_MCS.token_virg : // 444
+      case LEX_MCS.token_virg : // 4486
         regle77 () ;
       break ;
       default :

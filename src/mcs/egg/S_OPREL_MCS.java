@@ -201,22 +201,22 @@ this.att_code="SUBR ILss;\n";
   public void analyser () throws Exception {
     scanner.lit ( 1 ) ;
     switch ( scanner.fenetre[0].code ) {
-      case LEX_MCS.token_inf : // 459
+      case LEX_MCS.token_inf : // 4501
         regle40 () ;
       break ;
-      case LEX_MCS.token_sup : // 461
+      case LEX_MCS.token_sup : // 4503
         regle41 () ;
       break ;
-      case LEX_MCS.token_infeg : // 460
+      case LEX_MCS.token_infeg : // 4502
         regle42 () ;
       break ;
-      case LEX_MCS.token_supeg : // 462
+      case LEX_MCS.token_supeg : // 4504
         regle43 () ;
       break ;
-      case LEX_MCS.token_eg : // 463
+      case LEX_MCS.token_eg : // 4505
         regle44 () ;
       break ;
-      case LEX_MCS.token_neg : // 464
+      case LEX_MCS.token_neg : // 4506
         regle45 () ;
       break ;
       default :

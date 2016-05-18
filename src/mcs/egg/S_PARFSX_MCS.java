@@ -73,10 +73,10 @@ x_6.att_hdep=this.att_hdep+x_3.att_type.getTaille();
   public void analyser () throws Exception {
     scanner.lit ( 1 ) ;
     switch ( scanner.fenetre[0].code ) {
-      case LEX_MCS.token_parf : // 441
+      case LEX_MCS.token_parf : // 4483
         regle10 () ;
       break ;
-      case LEX_MCS.token_virg : // 444
+      case LEX_MCS.token_virg : // 4486
         regle11 () ;
       break ;
       default :

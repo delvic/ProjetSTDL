@@ -143,16 +143,16 @@ att_scanner._interrompre(IProblem.Semantic, att_scanner.getBeginLine(), IMCSMess
   public void analyser () throws Exception {
     scanner.lit ( 1 ) ;
     switch ( scanner.fenetre[0].code ) {
-      case LEX_MCS.token_mult : // 468
+      case LEX_MCS.token_mult : // 4510
         regle55 () ;
       break ;
-      case LEX_MCS.token_div : // 469
+      case LEX_MCS.token_div : // 4511
         regle56 () ;
       break ;
-      case LEX_MCS.token_mod : // 470
+      case LEX_MCS.token_mod : // 4512
         regle57 () ;
       break ;
-      case LEX_MCS.token_et : // 471
+      case LEX_MCS.token_et : // 4513
         regle58 () ;
       break ;
       default :

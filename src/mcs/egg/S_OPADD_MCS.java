@@ -114,13 +114,13 @@ this.att_code="SUBR ISub;\n";
   public void analyser () throws Exception {
     scanner.lit ( 1 ) ;
     switch ( scanner.fenetre[0].code ) {
-      case LEX_MCS.token_plus : // 465
+      case LEX_MCS.token_plus : // 4507
         regle49 () ;
       break ;
-      case LEX_MCS.token_moins : // 466
+      case LEX_MCS.token_moins : // 4508
         regle50 () ;
       break ;
-      case LEX_MCS.token_ou : // 467
+      case LEX_MCS.token_ou : // 4509
         regle51 () ;
       break ;
       default :

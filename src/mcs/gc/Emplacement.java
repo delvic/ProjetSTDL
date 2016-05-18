@@ -39,4 +39,7 @@ public class Emplacement {
     public Emplacement() {
     	super();
     }
+    public Emplacement offset(int i) {
+    	return new Emplacement(dep + i, reg);
+    }
 }

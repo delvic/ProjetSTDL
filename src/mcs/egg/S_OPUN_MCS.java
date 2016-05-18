@@ -95,13 +95,13 @@ this.att_code="";
   public void analyser () throws Exception {
     scanner.lit ( 1 ) ;
     switch ( scanner.fenetre[0].code ) {
-      case LEX_MCS.token_plus : // 465
+      case LEX_MCS.token_plus : // 4507
         regle62 () ;
       break ;
-      case LEX_MCS.token_moins : // 466
+      case LEX_MCS.token_moins : // 4508
         regle63 () ;
       break ;
-      case LEX_MCS.token_non : // 472
+      case LEX_MCS.token_non : // 4514
         regle64 () ;
       break ;
       default :

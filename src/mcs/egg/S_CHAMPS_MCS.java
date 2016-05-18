@@ -74,22 +74,22 @@ x_5.att_hdep=this.att_hdep+x_2.att_type.getTaille();
   public void analyser () throws Exception {
     scanner.lit ( 1 ) ;
     switch ( scanner.fenetre[0].code ) {
-      case LEX_MCS.token_acf : // 443
+      case LEX_MCS.token_acf : // 4485
         regle21 () ;
       break ;
-      case LEX_MCS.token_void : // 450
+      case LEX_MCS.token_void : // 4492
         regle22 () ;
       break ;
-      case LEX_MCS.token_int : // 452
+      case LEX_MCS.token_int : // 4494
         regle22 () ;
       break ;
-      case LEX_MCS.token_char : // 453
+      case LEX_MCS.token_char : // 4495
         regle22 () ;
       break ;
-      case LEX_MCS.token_identc : // 477
+      case LEX_MCS.token_identc : // 4519
         regle22 () ;
       break ;
-      case LEX_MCS.token_struct : // 454
+      case LEX_MCS.token_struct : // 4496
         regle22 () ;
       break ;
       default :

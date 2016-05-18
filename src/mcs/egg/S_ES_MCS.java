@@ -61,34 +61,34 @@ this.att_ltypes.inserer(x_2.att_type);
   public void analyser () throws Exception {
     scanner.lit ( 1 ) ;
     switch ( scanner.fenetre[0].code ) {
-      case LEX_MCS.token_parf : // 441
+      case LEX_MCS.token_parf : // 4483
         regle74 () ;
       break ;
-      case LEX_MCS.token_entier : // 473
+      case LEX_MCS.token_entier : // 4515
         regle75 () ;
       break ;
-      case LEX_MCS.token_caractere : // 474
+      case LEX_MCS.token_caractere : // 4516
         regle75 () ;
       break ;
-      case LEX_MCS.token_plus : // 465
+      case LEX_MCS.token_plus : // 4507
         regle75 () ;
       break ;
-      case LEX_MCS.token_moins : // 466
+      case LEX_MCS.token_moins : // 4508
         regle75 () ;
       break ;
-      case LEX_MCS.token_non : // 472
+      case LEX_MCS.token_non : // 4514
         regle75 () ;
       break ;
-      case LEX_MCS.token_null : // 458
+      case LEX_MCS.token_null : // 4500
         regle75 () ;
       break ;
-      case LEX_MCS.token_paro : // 440
+      case LEX_MCS.token_paro : // 4482
         regle75 () ;
       break ;
-      case LEX_MCS.token_mult : // 468
+      case LEX_MCS.token_mult : // 4510
         regle75 () ;
       break ;
-      case LEX_MCS.token_ident : // 476
+      case LEX_MCS.token_ident : // 4518
         regle75 () ;
       break ;
       default :
