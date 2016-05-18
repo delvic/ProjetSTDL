@@ -1,0 +1,1441 @@
+-----------------------------------------------------
+-- Grammaires de MC  et MCS                       --
+-----------------------------------------------------
+--options
+option auto = true;
+option version = 0.0.1;
+option k=2;
+--attributes 
+
+-- le fichier source
+inh source : MCSSourceFile for PROGRAMME;
+-- la machine cible pour la generation de code
+inh machine : IMachine for 
+         ENTITES, ENTITE, DECL, FONCTION, INST, BLOC, INSTS, SIX,
+         PARFS, PARF, PARFSX, ES, ESX, 
+         E, AFFX, A, AX, R, RX, T, TX, F,FX
+--         -- decommenter la ligne suivante pour MCS
+--       , BASE, DEFS, DEF
+--         -- fin extension MCS
+         ;
+-- ces attributs permettent de recuperer les instructions du code ASM inline       
+syn code_asm : STRING for ASM;
+-- la TDS courante
+inh tds_asm : TDS for ASM;
+
+inh tds : TDS for ENTITES,ENTITE,TYPE,STYPE,CHAMP,CHAMPS,INST,INSTS,BLOC,FONCTION,DECL,SIX,
+                    F,T,R,A,E,AFFX,FX,TX,RX,AX,ES,ESX,PARF,PARFS,PARFSX;
+syn type : DTYPE for TYPE,STYPE,PTRS,CHAMP,DECL,FONCTION,PARF,F,FX,E,A,AX,AFFX,OPREL,OPADD,
+                      OPMUL,OPUN,R,T,RX,TX;
+inh hemp : Emplacement for ENTITES,ENTITE,BLOC,INST,INSTS,SIX;
+syn emp : Emplacement for ENTITE,ENTITES,INST,INSTS,BLOC;
+inh htype : DTYPE for PTRS,DECL,FONCTION,FX,AFFX,OPREL,OPADD,OPMUL,AX,TX,RX,INST,INSTS,BLOC,SIX;
+inh lchamps : LCHAMPS for CHAMPS,PARFS,PARFSX;
+syn champ : CHAMP for CHAMP,PARF;
+inh hdep : INTEGER for CHAMP,CHAMPS,PARF,PARFS,PARFSX; 
+inh ltypes : LTYPES for ES,ESX;
+syn code : STRING for F,OPUN,E,FX,INST,AFFX,BLOC,INSTS,SIX,A,R,AX,OPREL,T,RX,OPADD,TX,OPMUL;
+
+--terminals
+space separateur is  "[\r\n\t ]+";     
+space comm is  "\/\/[^\n]*\n";
+sugar paro is  "\(";
+sugar parf is  "\)";
+sugar aco is  "\{";     
+sugar acf is  "\}"; 
+sugar virg is  ",";
+sugar pt is "\.";
+sugar pv is  "\;";
+sugar affect is  "=";
+sugar si is  "if";
+sugar sinon is  "else";
+sugar void is  "void";
+sugar asm is  "asm";
+sugar int is  "int";
+sugar char is  "char";
+sugar struct is "struct";
+sugar typedef is "typedef";
+-- decommenter pour MCS
+--sugar ref is "ref" ;
+--sugar out is "out";
+--sugar namespace is "namespace";
+--sugar using is "using";
+--sugar class is "class";
+--sugar public is "public" ;
+--sugar private is "private";
+--sugar dpts is "\:";
+--sugar bool is "bool";
+--sugar true is "true";
+--sugar false is "false";
+--sugar this is "this";
+--sugar new is "new" ;
+--sugar null2 is "null";
+--sugar base is "base" ;
+-- 
+sugar retour is  "return";
+sugar arrow is "\-\>";
+sugar null is  "NULL";
+sugar inf is  "\<";
+sugar infeg is  "\<=";
+sugar sup is  "\>";
+sugar supeg is  "\>=";
+sugar eg is  "==";
+sugar neg is  "\!=";
+sugar plus is  "\+";
+sugar moins is  "\-";
+sugar ou is  "\|\|";
+sugar mult is  "\*";
+sugar div is  "\/";
+sugar mod is  "\%" ; 
+sugar et is  "\&\&";
+sugar non is  "\!";
+term entier is  "[0-9]+";
+term caractere is  "\'[^\']\'";
+term chaine is  "\"[^\"]*\"";
+term ident is  "[a-z][_0-9A-Za-z]*";
+term identc is  "[A-Z][_0-9A-Za-z]*";
+
+-- pour les instructions en assembleur TAM 'inline'
+compil ASM;
+
+--production rules
+PROGRAMME -> #init #tds ENTITES #gen;
+global
+   machine : IMachine;
+-- transmission de la machine cible  (choisie par l'option -m au lancement) 
+#init {
+local
+do
+   machine := PROGRAMME^source.getMachine();
+   if machine = null then
+     error(NO_MACH, PROGRAMME^source.getMachName());
+   else
+     ENTITES^machine := machine;
+   end
+end
+}
+-- ecrit le code dans un fichier
+#gen {
+local
+do
+   machine.writeCode(PROGRAMME^source.getFileName(),"; no code\n");  
+end
+}
+
+#tds {
+do
+  ENTITES^hemp := new Emplacement(0,new Register("SB",0));
+  ENTITES^tds := new TDS();
+end
+}
+
+ENTITES -> #emp;
+#emp{
+do
+  ENTITES^emp := ENTITES^hemp;
+end
+}
+ENTITES -> ENTITE #hemp ENTITES #emp;
+#hemp{
+do
+  ENTITES1^hemp := ENTITE^emp;
+end
+}
+#emp{
+do
+  ENTITES^emp := ENTITES1^emp;
+end
+}
+-- definition d'un nom de type (commence par une majuscule)
+ENTITE -> typedef TYPE identc pv #majtds;
+#majtds {
+local
+  tds : TDS;
+  i : INFO;
+  it : INFOTYPE;
+do
+  tds := ENTITE^tds;
+  i := tds.chercherGlobalement(identc^txt);
+  if i = nil then
+      it := new INFOTYPE(TYPE^type);
+      tds.inserer(identc^txt,it);
+  else
+    error(ident_non_disponible,identc^txt);
+  end
+  ENTITE^emp := ENTITE^hemp;
+end
+}
+
+-- definition d'une variable globale ou d'une fonction
+-- (commence par une minuscule)
+ENTITE ->  TYPE ident #htype DECL #tds ;
+
+#htype{
+do
+  DECL^htype := TYPE^type;
+end
+}
+--Emplacement TODO
+#tds{
+local
+  i : INFO;
+  iv : INFOVAR;
+  e : Emplacement;
+  dep : int;
+  reg : Register;
+do
+  i := ENTITE^tds.chercherGlobalement(ident^txt);
+  if i = nil then
+    e := ENTITE^hemp;
+    iv := new INFOVAR(DECL^type,e);
+    call ENTITE^tds.inserer(ident^txt,iv);
+  else
+    error(ident_non_disponible,ident^txt);
+  end
+  dep := TYPE^type.getTaille()+ENTITE^hemp.getDep();
+  reg := ENTITE^hemp.getReg();
+  ENTITE^emp := new Emplacement(dep,reg);
+end
+}
+
+-- Variable
+DECL -> #type pv;
+#type{
+do
+  DECL^type := DECL^htype;
+end
+}
+DECL -> #tds FONCTION #type;
+#tds {
+do
+  FONCTION^tds:=new TDS(DECL^tds);
+end
+}
+#type{
+do
+  DECL^type := FONCTION^type;
+end
+}
+-- Fonction
+FONCTION ->  paro #dep #lchamps PARFS parf #type #hemp BLOC ;
+global
+  lc : LCHAMPS;
+#hemp{
+local
+  reg : Register;
+do
+  reg := new Register("LB",0);
+  BLOC^hemp := new Emplacement(0,reg);
+end
+}
+#lchamps{
+do
+  lc := new LCHAMPS();
+  PARFS^lchamps := lc;
+end
+}
+
+#dep{
+do
+  PARFS^hdep := 0;
+end
+}
+#type{
+local
+  type : DTYPE;
+do
+  type := new FONCTION(FONCTION^htype,lc);
+  FONCTION^type := type;
+  BLOC^htype := type;
+end
+}
+-- parametres de fonctions
+PARFS -> ;
+
+PARFS ->  PARF #dep #lchamps PARFSX ;
+#dep{
+do
+  PARFSX^hdep:=PARF^type.getTaille();
+end
+}
+#lchamps{
+do
+  PARFS^lchamps.inserer(PARF^champ);
+end
+}
+PARFSX -> ;
+
+PARFSX ->  virg PARF #dep #lchamps PARFSX ;
+#dep{
+do
+  PARFSX1^hdep := PARFSX^hdep + PARF^type.getTaille();
+end
+}
+#lchamps{
+do
+  PARFSX^lchamps.inserer(PARF^champ);
+end
+}
+
+PARF -> TYPE ident #tds #champ ;
+--TODO Emplacement
+#tds{
+local
+  i : INFO;
+  iv : INFOVAR;
+  e : Emplacement;
+do
+  i := PARF^tds.chercherLocalement(ident^txt);
+  if i = nil then
+    e := new Emplacement();
+    iv := new INFOVAR(TYPE^type,e);
+    call PARF^tds.inserer(ident^txt,iv);
+  else
+    error(ident_non_disponible,ident^txt);
+  end
+end
+}
+#champ{
+do
+  PARF^champ := new CHAMP(PARF^hdep,ident^txt,TYPE^type);
+  PARF^type := TYPE^type;
+end
+}
+
+-- les types (de base, noms, struct et pointeurs)
+TYPE -> STYPE #htype PTRS #type;
+#htype{
+do
+  PTRS^htype := STYPE^type;
+end
+}
+#type{
+do
+  TYPE^type := PTRS^type;
+end
+}
+-- type de base
+-- des * pour definir un pointeur
+PTRS -> #type;
+#type {
+do
+  PTRS^type := PTRS^htype;
+end
+}
+
+PTRS -> mult #htype PTRS #type ;
+#htype{
+do
+  PTRS1^htype := new POINTEUR(PTRS^htype);
+end
+}
+#type{
+do
+  PTRS^type := PTRS1^type;
+end
+}
+-- types de base
+STYPE-> void #type ;
+#type{
+do
+  STYPE^type := new TYPE_BASE(0,"void");
+end
+}
+STYPE-> int #type;
+#type{
+do
+  STYPE^type := new TYPE_BASE(1,"entier");
+end
+}
+STYPE-> char #type;
+#type{
+do
+  STYPE^type := new TYPE_BASE(1,"char");
+end
+}
+-- nom de type (commence par une majuscule)
+STYPE -> identc #type;
+#type{
+local
+  i : INFO;
+  it : INFOTYPE;
+do
+  i := STYPE^tds.chercherGlobalement(identc^txt);
+  if i = nil then
+    error(ident_not_found,identc^txt);
+  else
+    match i with
+      INFOTYPE then
+        it := i;
+        STYPE^type := it.getType();
+    else
+        error(not_type_name,identc^txt);
+    end
+  end
+end
+}
+-------------  
+-- et struct
+STYPE -> struct aco #hdep #lchamps CHAMPS acf #type;
+global
+  lc : LCHAMPS;
+#lchamps{
+do
+  lc := new LCHAMPS();
+  CHAMPS^lchamps := lc;
+end
+}
+#hdep{
+do
+  CHAMPS^hdep := 0;
+end
+}
+
+#type{
+do
+  STYPE^type := new STRUCT(lc);
+end
+}
+
+CHAMPS ->;
+-- un nom de champ commence par une minuscule
+CHAMPS -> CHAMP #dep #lchamps CHAMPS;
+#dep{
+do
+  CHAMPS1^hdep := CHAMPS^hdep + CHAMP^type.getTaille();
+end
+}
+#lchamps{
+do
+  if CHAMPS^lchamps.chercher(CHAMP^champ.getNom()) = nil then
+    CHAMPS^lchamps.inserer(CHAMP^champ);
+  else
+    error(ident_non_disponible);
+  end
+end
+}
+CHAMP -> TYPE ident pv #champ;
+#champ{
+do
+  CHAMP^champ := new CHAMP(CHAMP^hdep,ident^txt,TYPE^type);
+  CHAMP^type := TYPE^type;
+end
+}
+-- corps de fonction et bloc d'instructions
+BLOC ->  aco INSTS acf #emp #gen ; 
+#emp{
+do
+  BLOC^emp := INSTS^emp;
+end
+}
+#gen{
+do
+  BLOC^code := INSTS^code;
+end
+}
+-- instructions
+INSTS -> #emp #gen;
+#gen{
+do
+  INSTS^code := "";
+end
+}
+#emp{
+do
+  INSTS^emp := INSTS^hemp;
+end
+}
+INSTS -> INST #hemp INSTS #emp #gen ;
+#gen{
+do
+  INSTS^code := INST^code + INSTS1^code;
+end
+}
+#emp{
+do
+  INSTS^emp := INSTS1^emp;
+end
+}
+#hemp{
+do
+  INSTS1^hemp := INST^emp;
+end
+}
+-- declaration de variable locale avec ou sans init 
+INST ->  TYPE ident #htype AFFX pv #tds;
+#htype{
+do
+  AFFX^htype := TYPE^type;
+end
+}
+#tds{
+local
+  i : INFO;
+  iv : INFOVAR;
+  e : Emplacement;
+do
+  i := INST^tds.chercherLocalement(ident^txt);
+  if i = nil then
+    e := INST^hemp;
+    iv := new INFOVAR(TYPE^type,e);
+    INST^tds.inserer(ident^txt,iv);
+  else
+    error(ident_non_disponible,ident^txt); 
+  end
+  INST^emp := new Emplacement(e.getDep() + TYPE^type.getTaille(),e.getReg());
+  INST^code := INST^machine.genDecl(ident^txt,iv,AFFX^code);
+  end
+}
+-- instruction expression (affectation et appel de procedure)
+INST -> E pv #emp #gen ;
+#gen{
+do
+  INST^code := E^code;
+end
+}
+#emp{
+do
+  INST^emp := INST^hemp;
+end
+}
+-- bloc d'instructions 
+INST ->  #tds #hemp BLOC #emp #gen;
+#gen{
+do
+  INST^code := BLOC^code + INST^machine.genFree(BLOC^emp.getDep());
+end
+}
+#tds{
+do
+  BLOC^tds := new TDS(INST^tds);
+end
+}
+#hemp{
+local
+  reg : Register;
+  regi : Register;
+do
+  regi := INST^hemp.getReg(); 
+  reg := new Register("LB",regi.getNum()+1);
+  BLOC^hemp := new Emplacement(0,reg);
+end
+}
+#emp{
+do
+  INST^emp := INST^hemp;
+end
+}
+-- conditionnelle
+INST ->   si paro E parf #tds #hemp BLOC SIX #emp #gen ;
+#gen{
+do
+  INST^code := INST^machine.genIf(E^code,BLOC^code,SIX^code);
+end
+}
+#emp{
+do
+  INST^emp := INST^hemp;
+end
+}
+#hemp{
+local
+  reg : Register;
+  regi : Register;
+do
+  regi := INST^hemp.getReg(); 
+  reg := new Register("LB",regi.getNum()+1);
+  BLOC^hemp := new Emplacement(0,reg);
+end
+}
+#tds{
+do
+  BLOC^tds := new TDS(INST^tds);
+end
+}
+SIX -> sinon #hemp #tds BLOC #gen ;
+#gen{
+do
+  SIX^code := BLOC^code;
+end
+}
+#hemp{
+local
+  reg : Register;
+  regi : Register;
+do
+  regi := SIX^hemp.getReg(); 
+  reg := new Register("LB",regi.getNum()+1);
+  BLOC^hemp := new Emplacement(0,reg);
+end
+}
+#tds{
+do
+  BLOC^tds := new TDS(SIX^tds);
+end
+}
+SIX -> #gen;
+#gen{
+do
+  SIX^code := "";
+end
+}
+-- retour de fonction
+INST ->  retour  E pv #emp #gen;
+#gen{
+local
+  lt : LTYPES;
+do
+  match INST^htype with
+    FONCTION then
+      lt := INST^htype.getTypes();
+      INST^code := "RETURN ( " + lt.getTaille() + ") " + INST^htype.getTaille() + ";\n";
+    else
+      error(pas_fonction);
+  end
+end
+}
+#emp{
+do
+  INST^emp := new Emplacement();
+end
+}
+
+
+-- les expressions -------------
+-----------------------------------------------------------------------
+-- E = expression (y compris l'affectation)
+-- A = expression figurant dans une affectation
+-- R = expression figurant dans une expresion relationnelle
+-- T = expression figurant dans une expression additive (TERME)
+-- F = expression figurant dans une expression multiplicative (FACTEUR)
+-----------------------------------------------------------------------
+E -> A  #htype AFFX #type #gen;
+#gen{
+do
+  E^code := AFFX^code + A^code;
+end
+}
+#type{
+do
+  E^type := AFFX^type;
+end
+}
+#htype{
+do
+  AFFX^htype := A^type;
+end
+}
+-- affectation
+AFFX -> affect  A #type #gen ;
+#gen{
+do
+  AFFX^code := A^code;
+end
+}
+#type{
+do
+  if AFFX^htype.compareTo(A^type) then
+    AFFX^type := new TYPE_BASE(0,"void");
+  else
+    error(types_incompatibles);
+  end 
+end
+}
+AFFX -> #type #gen;
+#gen{
+do
+  AFFX^code := "";
+end
+}
+#type{
+do
+  AFFX^type := AFFX^htype;  
+end
+}
+-- relation
+A -> R #htype AX #type #gen;
+#gen{
+do
+  A^code := R^code + AX^code;
+end
+}
+#type{
+do
+ A^type := AX^type; 
+end
+}
+#htype{
+do
+  AX^htype := R^type;
+end
+}
+
+AX -> OPREL R #type #gen;
+#type{
+local
+  droite : DTYPE;
+  retour : DTYPE;
+  op : OP;
+do
+  match OPREL^type with
+    OP then
+      op := OPREL^type;
+      droite := op.getDroite();
+      if R^type.compareTo(droite) then
+        retour := op.getRetour();
+        AX^type := retour;
+      else
+        error(types_incompatibles);
+      end
+  else
+    error(pas_op);
+  end
+end
+}
+#gen{
+do
+  AX^code := R^code + OPREL^code;
+end
+}
+
+AX ->  #type #gen;
+#gen{
+do
+  AX^code := "";
+end
+}
+#type{
+do
+  AX^type := AX^htype;
+end
+}
+
+-- operateurs relationnels
+OPREL -> inf #type #gen;
+#gen{
+do
+  OPREL^code := "SUBR ILss;\n";
+end
+}
+#type{
+do
+  if ((OPREL^htype.compareTo(new TYPE_BASE(1,"entier")))|
+      (OPREL^htype.compareTo(new TYPE_BASE(1,"char")))) then
+    OPREL^type := new OP(new TYPE_BASE(1,"entier"),OPREL^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+
+OPREL -> sup #type #gen;
+#gen{
+do
+  OPREL^code := "SUBR IGtr;\n";
+end
+}
+#type{
+do
+  if ((OPREL^htype.compareTo(new TYPE_BASE(1,"entier")))|
+      (OPREL^htype.compareTo(new TYPE_BASE(1,"char")))) then
+    OPREL^type := new OP(new TYPE_BASE(1,"entier"),OPREL^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+
+OPREL -> infeg #type #gen;
+#gen{
+do
+  OPREL^code := "SUBR ILeq;\n";
+end
+}
+#type{
+do
+  if ((OPREL^htype.compareTo(new TYPE_BASE(1,"entier")))|
+      (OPREL^htype.compareTo(new TYPE_BASE(1,"char")))) then
+    OPREL^type := new OP(new TYPE_BASE(1,"entier"),OPREL^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+
+OPREL -> supeg #type #gen;
+#gen{
+do
+  OPREL^code := "SUBR IGeq;\n";
+end
+}
+#type{
+do
+  if ((OPREL^htype.compareTo(new TYPE_BASE(1,"entier")))|
+      (OPREL^htype.compareTo(new TYPE_BASE(1,"char")))) then
+    OPREL^type := new OP(new TYPE_BASE(1,"entier"),OPREL^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+
+OPREL -> eg #type #gen;
+#gen{
+do
+  OPREL^code := "SUBR IEq;\n";
+end
+}
+#type{
+do
+  if ((OPREL^htype.compareTo(new TYPE_BASE(1,"entier")))|
+      (OPREL^htype.compareTo(new TYPE_BASE(1,"char")))) then
+    OPREL^type := new OP(new TYPE_BASE(1,"entier"),OPREL^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+
+OPREL -> neg #type #gen;
+#gen{
+do
+  OPREL^code := "SUBR INeq;\n";
+end
+}
+#type{
+do
+  if ((OPREL^htype.compareTo(new TYPE_BASE(1,"entier")))|
+      (OPREL^htype.compareTo(new TYPE_BASE(1,"char")))) then
+    OPREL^type := new OP(new TYPE_BASE(1,"entier"),OPREL^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+
+R ->  T #htype RX #type #gen;
+#type{
+do
+  R^type := RX^type;
+end
+}
+#htype{
+do
+  RX^htype := T^type;
+end
+}
+#gen{
+do
+  R^code := T^code + RX^code;
+end
+}
+
+-- additions ...
+RX -> OPADD T #htype RX #type #gen;
+#htype{
+local
+  droite : DTYPE;
+  retour : DTYPE;
+  op : OP;
+do
+  match OPADD^type with
+    OP then
+      op := OPADD^type;
+      droite := op.getDroite();
+      if T^type.compareTo(droite) then
+        retour := op.getRetour();
+       RX1^htype := retour;
+     else
+       error(types_incompatibles);
+     end
+  else
+    error(pas_op);
+  end
+end
+}
+
+#type{
+do
+  RX^type := RX1^type;
+end
+}
+#gen {
+do
+  RX^code := T^code + OPADD^code + RX1^code;
+end
+}
+RX -> #type #gen;
+#type{
+do
+  RX^type := RX^htype;
+end
+}
+#gen{
+do
+  RX^code := "";
+end
+}
+-- operateurs additifs
+OPADD -> plus #type #gen;
+#type{
+do
+  if (OPADD^htype.compareTo(new TYPE_BASE(1,"entier"))) then
+    OPADD^type := new OP(new TYPE_BASE(1,"entier"),OPADD^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+#gen{
+do
+  OPADD^code := "SUBR IAdd;\n";
+end
+}
+OPADD -> moins #type #gen;
+#gen{
+do
+  OPADD^code := "SUBR ISub;\n";
+end
+}
+#type{
+do
+  if (OPADD^htype.compareTo(new TYPE_BASE(1,"entier"))) then
+    OPADD^type := new OP(new TYPE_BASE(1,"entier"),OPADD^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+OPADD -> ou #type #gen;
+#gen{
+do
+  OPADD^code := "SUBR IAdd;\nLOADL 1;\nSUBR IGeq;\n";
+end
+}
+#type{
+do
+  if (OPADD^htype.compareTo(new TYPE_BASE(1,"entier"))) then
+    OPADD^type := new OP(new TYPE_BASE(1,"entier"),OPADD^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+-- multiplication, ...
+T ->  F #htype TX #type #gen;
+#type{
+do
+  T^type := TX^type;
+end
+}
+#htype{
+do
+  TX^htype := F^type;
+end
+}
+#gen {
+do
+  T^code := F^code + TX^code;
+end
+}
+TX -> OPMUL F #htype TX #type #gen;
+#gen{
+do
+  TX^code := F^code + OPMUL^code + TX1^code;
+end
+}
+#htype{
+local
+  droite : DTYPE;
+  retour : DTYPE;
+  op : OP;
+do
+  match OPMUL^type with
+    OP then
+      op := OPMUL^type;
+      droite := op.getDroite();
+      if F^type.compareTo(droite) then
+        retour := op.getRetour();
+       TX1^htype := retour;
+     else
+       error(types_incompatibles);
+     end
+  else
+    error(pas_op);
+  end
+end
+}
+#type{
+do
+  TX^type := TX1^type;
+end
+}
+TX -> #type #gen;
+#gen{
+do
+  TX^code := "";
+end
+}
+#type{
+do
+  TX^type := TX^htype;
+end
+}
+-- operateurs multiplicatifs
+OPMUL -> mult #type #gen;
+#gen{
+do
+  OPMUL^code := "SUBR IMul;\n";
+end
+}
+#type{
+do
+  if (OPMUL^htype.compareTo(new TYPE_BASE(1,"entier"))) then
+    OPMUL^type := new OP(new TYPE_BASE(1,"entier"),OPMUL^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+OPMUL -> div #type #gen;
+#gen{
+do
+  OPMUL^code := "SUBR IDiv;\n";
+end
+}
+#type{
+do
+  if (OPMUL^htype.compareTo(new TYPE_BASE(1,"entier"))) then
+    OPMUL^type := new OP(new TYPE_BASE(1,"entier"),OPMUL^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+OPMUL -> mod #type #gen;
+#gen{
+do
+  OPMUL^code := "SUBR IMod;\n";
+end
+}
+#type{
+do
+  if (OPMUL^htype.compareTo(new TYPE_BASE(1,"entier"))) then
+    OPMUL^type := new OP(new TYPE_BASE(1,"entier"),OPMUL^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+OPMUL -> et #type #gen;
+#gen{
+do
+  OPMUL^code := "SUBR IMul;\n";
+end
+}
+#type{
+do
+  if (OPMUL^htype.compareTo(new TYPE_BASE(1,"entier"))) then
+    OPMUL^type := new OP(new TYPE_BASE(1,"entier"),OPMUL^htype);
+  else
+    error(types_incompatibles);
+  end
+end
+}
+-- expressions de base
+-- Constante entiere
+F -> entier #type #gen;
+#type{
+do
+  F^type := new TYPE_BASE(1,"entier");
+end
+}
+#gen{
+do
+    F^code := F^machine.genCst(entier^txt);
+end
+}
+-- Constante chaine
+--F -> chaine #type;
+--#type{
+--do
+--  F^type := new TYPE_BASE(2,"string");
+--end
+--}
+-- Constante caractere
+F -> caractere #type #gen;
+#type{
+do
+  F^type := new TYPE_BASE(1,"char");
+end
+}
+#gen{
+do
+  F^code := F^machine.genCst(caractere^txt);
+end
+}
+-- expression unaire
+F ->  OPUN F #type #gen;
+#type{
+local
+  droite : DTYPE;
+  retour : DTYPE;
+  op : OP;
+do
+  match OPUN^type with
+    OP then
+      op := OPUN^type;
+      droite := op.getDroite();
+      if F1^type.compareTo(droite) then
+        retour := op.getRetour();
+       F^type := retour;
+     else
+       error(types_incompatibles);
+     end
+  else
+    error(pas_op);
+  end
+end
+}
+#gen{
+do
+  F^code := F1^code + OPUN^code;
+end
+}
+
+-- operateurs unaires
+OPUN -> plus #type #gen;
+#gen{
+do
+  OPUN^code := "";
+end
+}
+#type{
+do
+  OPUN^type := new OP(new TYPE_BASE(1,"entier"),new TYPE_BASE(1,"entier"));
+end
+}
+OPUN -> moins #type #gen;
+#gen{
+do
+  OPUN^code := "SUBR INeg;\n";
+end
+}
+#type{
+do
+  OPUN^type := new OP(new TYPE_BASE(1,"entier"),new TYPE_BASE(1,"entier"));
+end
+}
+
+OPUN -> non #type #gen;
+#gen{
+do
+  OPUN^code := "LOADL 1;\n SUBR ISub;\n";
+end
+}
+#type{
+do
+  OPUN^type := new OP(new TYPE_BASE(1,"entier"),new TYPE_BASE(1,"entier"));
+end
+}
+
+-- pointeur NULL
+F -> null #type #gen;
+#gen{
+do
+  F^code := "SUBR MVoid ; \n";
+end
+}
+#type{
+do
+  F^type := new POINTEUR();
+end
+}
+-- expression parenthesee
+F -> paro E parf #htype FX #type #gen;
+#gen{
+do
+  F^code := E^code + FX^code;
+end
+}
+#htype{
+do
+  FX^htype := E^type;
+end
+}
+#type{
+do
+  F^type := FX^type;
+end
+}
+
+F -> paro TYPE parf F #type #gen;
+#gen{
+do
+  F^code := F1^code;
+end
+}
+#type{
+do
+  if TYPE^type.compareTo(F1^type) then
+    F^type := TYPE^type;
+  else
+    error(types_incompatibles);
+  end
+end
+}
+
+F -> mult F #type #gen;
+#gen{
+do
+  F^code := "";
+end
+}
+#type{
+do
+  match F1^type with
+    POINTEUR then
+      F^type := F1^type.getTypePointe();
+  else
+    error(pas_pointeur);
+  end
+end
+}
+
+F -> ident #htype FX #type #gen;
+#gen{
+do
+  F^code := "";
+end
+}
+#type{
+do
+  F^type := FX^type;
+end
+}
+
+#htype{
+local
+  i : INFO;
+  iv : INFOVAR;
+do
+  i := F^tds.chercherGlobalement(ident^txt);
+  if i = nil then
+    error(ident_not_found,ident^txt);
+  else
+    match i with
+      INFOVAR then
+        iv := i;
+        FX^htype := iv.getType();
+      else
+        error(not_var_name,ident^txt);
+      end
+  end
+end
+}
+
+FX -> #type;
+#type{
+do
+  FX^type := FX^htype;
+  FX^code := "";
+end
+}
+
+-- acces champ
+FX ->   pt  ident #htype FX #type;
+#type{
+do
+  FX^type := FX1^type;
+  FX^code := "";
+end
+}
+#htype{
+local
+  lchamps : LCHAMPS;
+  champ : CHAMP;
+  struct : STRUCT;
+do
+  match FX^htype with
+    STRUCT then
+      struct := FX^htype;
+      lchamps := struct.getChamps();
+      champ := lchamps.chercher(ident^txt);
+        if champ = nil then
+          error(champ_inexistant,ident^txt);
+        else
+          FX1^htype := champ.getType();
+        end
+  else
+    error(pas_struct);
+  end
+end
+}
+-- acces champ pointeur
+
+FX ->   arrow ident #htype FX #type;
+#type{
+do
+  FX^type := FX1^type;
+  FX^code := "";
+end
+}
+
+#htype{
+local
+  typePoint : DTYPE;
+  lchamps : LCHAMPS;
+  champ : CHAMP;
+do
+  match FX^htype with 
+    POINTEUR then
+      typePoint := FX^htype.getTypePointe();
+      match typePoint with
+        STRUCT then
+          lchamps := typePoint.getChamps();
+          champ := lchamps.chercher(ident^txt);
+          if champ = nil then
+            error(champ_inexistant,ident^txt);
+          else
+            FX1^htype := champ.getType();
+          end
+      else
+        error(pas_struct);
+      end
+  else
+    error(pas_pointeur);
+  end
+end
+}
+
+-- appel de sous-programme
+FX ->   paro #ltypes ES parf #htype FX #type;
+global 
+  lt : LTYPES;
+#ltypes{
+do
+  lt := new LTYPES();
+  ES^ltypes := lt;
+end
+}
+#type{
+do
+  FX^code := "";
+  FX^type := FX1^type;
+end
+}
+
+#htype{
+do
+  match FX^htype with
+    FONCTION then
+      if lt = FX^htype.getTypes() then
+        FX1^htype := FX^htype.getRetour();
+      else
+        error(mauvais_parametres);
+      end
+  else
+    error(types_incompatibles);
+  end
+end
+}
+-- arguments appel de sous-programme
+ES -> ;
+ES -> E #ltypes ESX ;
+#ltypes{
+do
+  ES^ltypes.inserer(E^type);
+end
+}
+ESX ->;
+ESX -> virg E  #ltypes ESX;
+#ltypes{
+do
+  ESX^ltypes.inserer(E^type);
+end
+}
+
+------------- inline asm ----------------
+-- peut être utile pour implanter des sous-programmes
+-- directement en assembleur TAM.
+ENTITE ->   asm #tds ASM#gen#emp; 
+#emp{
+do
+  ENTITE^emp := ENTITE^hemp;
+end
+}
+#tds {
+do 
+  -- A faire : Remplacer 'null' par la table courante pour que
+  -- le code  ASM puisse acceder aux variables de MC ou MCS
+  ASM^tds_asm := null; 
+end
+}
+#gen {
+do
+  -- On recupere le code assembleur 'inline' dans : ASM^code_asm ;
+end
+}
+
+INST ->  asm   #tds ASM #gen #emp ;
+#emp{
+do
+  INST^emp := INST^hemp;
+end
+}
+#tds {
+do
+  -- A remplacer par la table courante pour que
+  -- l'assembleur puisse acceder aux variables
+  ASM^tds_asm := null; 
+end
+}
+
+#gen {
+do
+  INST^code := "";
+  -- ASM^code_asm contient le code assembleur inline
+  -- dans lequel les noms de variables ont ete remplaces
+  -- par leurs adresses.
+end
+}
+
+----------------- CS extension --------------------
+-- Decommenter les regles suivantes pour l'extension CS
+-------------------------------------------------
+--TYPE -> bool;
+---- definit un contenu d'un namespace
+--ENTITE -> namespace identc aco ENTITES acf ;
+---- donne l acces au contenu du 'namespace'
+--ENTITE -> using identc IDC pv ;
+--IDC -> ;
+--IDC -> pt identc IDC ;
+---- definition d'une classe (peut etre en dehors d'un namespace)
+--ENTITE -> ACCES class identc HERITAGE aco DEFS acf ;
+---- acces 
+--ACCES -> public;
+--ACCES -> private;
+--ACCES -> ;
+---- heritage
+--HERITAGE -> ;
+--HERITAGE -> dpts identc IDC ;
+---- membres d'une classe
+--DEFS -> ;
+--DEFS ->  ACCES DEF DEFS ;
+--DEF  ->  TYPE ident DECL ;
+---- constructeur
+--DEF  ->  identc paro PARFS parf BASE BLOC;
+---- appel eventuel au constructeur de la classe parente.
+--BASE -> ;
+--BASE -> dpts base paro ES parf  ;
+---- Mode de passage pour les fonctions et méthodes : rien : D, ref : D/R, out : R
+--PARF ->  MODE TYPE ident ;
+--MODE -> ref ;
+--MODE -> out ; 
+--F -> true;
+--F -> false;
+--F -> this FX;
+--F -> base FX;
+--F -> null2;
+--F -> new identc IDC paro ES parf ;
+end
